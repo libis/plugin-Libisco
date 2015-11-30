@@ -39,26 +39,13 @@
 
 <div class="field">
     <div class="two columns alpha">
-        <label><?php echo __('Login Id'); ?></label>
+        <label><?php echo __('Proxy'); ?></label>
     </div>
     <div class="inputs five columns omega" >
-        <p class='explanation'><?php echo __("Server login Id."); ?>
+        <p class='explanation'><?php echo __("Proxy server with port number (server_address:port)."); ?>
         </p>
         <div class="input-block">
-            <textarea name="libco_server_login_id" ><?php echo get_option('libco_server_login_id'); ?></textarea>
-        </div>
-    </div>
-</div>
-
-<div class="field">
-    <div class="two columns alpha">
-        <label><?php echo __('Login Password'); ?></label>
-    </div>
-    <div class="inputs five columns omega" >
-        <p class='explanation'><?php echo __("Server login password."); ?>
-        </p>
-        <div class="input-block">
-            <textarea name="libco_server_login_password" ><?php echo get_option('libco_server_login_password'); ?></textarea>
+            <textarea name="libco_server_proxy" ><?php echo get_option('libco_server_proxy'); ?></textarea>
         </div>
     </div>
 </div>

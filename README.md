@@ -1,2 +1,2 @@
 # plugin-Libisco
-Omeka plugin to connect with an external datastore.
+Omeka plugin to connect with external repositories.

@@ -8,99 +8,117 @@ require_once 'Zend/Service/Exception.php';
 
 class LibcoService {
 
+    public $db;
 
-    /**
-     * Add or update a record from omeka to an external repository.
-     * @param $record
-     * @param $recordKey
-     * @return bool
-     */
-    public function export($record, $recordKey){
+    function __construct()
+    {
+        $this->db = get_db();
+    }
 
-        //$recordKey = "tempvalue"; //tbr
-        /* If record key exists, it is an update operation, else a new record. */
-        if(isset($recordKey)){
-            //return $this->updateRecord($record['record'], $recordKey);
-            return $this->updateRecord($record, $recordKey);
+    public function prepareUrl($searchType){
+        $serverUrl = get_option('libco_server_url');
+        $urlPath = get_option('libco_url_path');
+        if(empty($serverUrl))
+            return null;
+
+        $reqType = null;
+        switch ($searchType){
+            case 'general':
+                if(!empty($urlPath))
+                    $endPoint = $urlPath;
+                $reqType = "POST";
+                break;
+
+            case 'collection':
+                break;
+
         }
-        else{
-            //return $this->addRecord($record['record']);
-            return $this->addRecord($record);
+        if(!empty($endPoint))
+            $requestUrl = get_option('libco_server_url').'/'.$endPoint;
+        else
+            $requestUrl = get_option('libco_server_url');
+
+        return array('url' => $requestUrl, 'type' => $reqType);
+    }
+
+
+    public function search($qParameters, $sources, $page){
+
+        //$filters = array(array('filterID' => 'year', 'values' => array('1966','1966')));
+        $filters = array();
+        $reqBody = array(
+            "searchTerm" => $qParameters,
+            "page" => $page,
+            "pageSize" => 100,
+            "source" => $sources,
+            "filters" => $filters
+        );
+        $response = $this->makeRequest("general", $reqBody);
+        $response = json_decode($response, true);
+
+        return $response;
+    }
+
+    public function normalizeResult($result, $qParameters){
+        $errorMessage = "";
+        $numberofRecords = 0;
+        $sourceResult = array();
+
+        if(array_key_exists('error', $result) && strlen($result['error']) > 0)
+        {
+            $errorMessage = $result['error'];
         }
-
-    }
-
-    /**
-     * Search a record in external repository.
-     * @param $searchTerm
-     * @param string $searchBy
-     * @return mixed
-     */
-    public function searchRecord($searchTerm, $searchBy = "title"){
-        $responseBody = $this->makeRequest('GET', null, null);
-
-        $resBody = json_decode($responseBody);
-        foreach ($resBody as $item) {
-            if($item->filename === $searchTerm)
-                return $item->key;
+        else
+        {
+            foreach($result as $searchItem){
+                $sourceResult[$searchItem['source']] = $searchItem['items'];
+                $numberofRecords += sizeof($searchItem['items']);
+            }
+            arsort($sourceResult);
         }
-
+        $result = array(
+            'query' => $qParameters,
+            'records' => $sourceResult,
+            'totalResults' => $numberofRecords,
+            'error' => $errorMessage,
+        );
+        return $result;
     }
 
     /**
-     * Get a specific record.
-     * @param $recordKey
-     * @return mixed
+     * @param null $userId user id to fetch a particular user's collections
+     * @return array
      */
-    public function getRecord($recordKey){
-        $responseBody = $this->makeRequest('GET', null, $recordKey);
-        return unserialize($responseBody);
-    }
+    public function getCollectionList($userId=null){
+        $collections = array();
 
-    /**
-     * Get a list of records.
-     */
-    public function getRecordsList(){
-        $responseBody = $this->makeRequest('GET', null, null);
-        $recordKeys = json_decode($responseBody);
-    }
+        $options = array();
+        if(!empty($userId))
+            $options = array('owner_id' => current_user()->id);
 
-    /**
-     * Http post request to external repository.
-     * @param $record
-     * @param $recordKey
-     * @return bool
-     */
-    public function updateRecord($record, $recordKey){
-        $requestBody = $this->prepareRequestBody($record);
-        $recordKey = null; //tbr
-        $response = $this->makeRequest('PUT', $requestBody, $recordKey);
-        $response = trim($response, '"');
-        return true;
-    }
+        $collectionTable = $this->db->getTable('Collection');
+        $userCollections = $collectionTable->findBy($options);
 
+        foreach($userCollections as $collection){
+            $collectionTitle = metadata($collection, array("Dublin Core", "Title"));
 
-    /**
-     * Http put request to external repository.
-     * @param $record
-     * @return bool
-     */
-    public function addRecord($record){
-        $requestBody = $this->prepareRequestBody($record);
-        $recordKey = null;
-        $response = $this->makeRequest('POST', $requestBody, null);
-        return trim($response, '"');
-    }
+            // skip if a collection is without title
+            if(empty($collectionTitle))
+                continue;
 
+            /*
+               skip if
+                    1. a collection with same id already exists in the list
+                    2. skip if a collection with same name already exists in the list
+            */
+            $key = array_search($collectionTitle, $collections);
+            if(array_key_exists($collection->id, $collections) || !empty($key))
+                continue;
 
-    /**
-     * Http delete request to external repository.
-     * @param $recordKey
-     * @return bool
-     */
-    public function deleteRecord($recordKey){
-        $response = $this->makeRequest('DELETE', null, $recordKey);
-        return true;
+            $collections [$collection->id.','.$collectionTitle] = $collectionTitle;
+        }
+        asort($collections); // sort collection array
+        return $collections;
     }
 
     /**
@@ -111,59 +129,37 @@ class LibcoService {
      * @return string|void
      * @throws Zend_Service_Exception
      */
-    public function makeRequest($requestType, $requestBody, $recordKey){
-        if(!in_array($requestType, array('GET', 'POST', 'PUT', 'DELETE'))){
-            echo 'invalid request: '. $requestType;
-            return;
+    public function makeRequest($requestType, $requestBody){
+        $request = $this->prepareUrl($requestType);
+        if(empty($request['url']) || empty($request['type'])){
+/*            $this->errorMessage($requestType, 'Error in preparing http request.');
+            return;*/
+            return json_encode(array('error' => 'Error in preparing http request.'));
         }
 
-        $url = $this->prepareUrl($recordKey);
-        if(empty($url)){
-            $this->errorMessage($requestType, 'Server url not available');
-            return;
-        }
+        $requestConfig = array(
+            'adapter'    => 'Zend_Http_Client_Adapter_Proxy',
+            'proxy_host' => get_option('libco_server_proxy'),
+            'timeout' => 900
+        );
 
         $restClient = new Zend_Rest_Client();
         $httpClient = $restClient->getHttpClient();
         $httpClient->resetParameters();
-        $httpClient->setUri($url);
+        $httpClient->setUri($request['url']);
+        $httpClient->setConfig($requestConfig);
         $httpClient->setHeaders('Content-Type', 'application/json');
-        $test = get_option('libco_server_login_token');
-        $httpClient->setHeaders('Authorization', get_option('libco_server_login_token'));
         $httpClient->setRawData(json_encode($requestBody));
-        $response = $httpClient->request($requestType);
+        $response = $httpClient->request($request['type']);
 
-        /* If error, throw exception. */
-        if ($response->isError()){
-            $this->errorMessage($requestType,  $response);
-            return;
-        }
+        if($response->getStatus() === 200)
+            return $response->getBody();
+        else
+            return json_encode(array('error' => "http connection error: ".$response->getStatus().", ".$response->getMessage()));
 
-        return $response->getBody();
     }
 
-    /**
-     * Prepare url for http requests.
-     * @param $recordKey
-     * @return null|string
-     */
-    public function prepareUrl($recordKey){
-        $currentUser = current_user();
-        $serverUrl = get_option('libco_server_url');
-        $urlPath = get_option('libco_url_path');
-        if(empty($serverUrl) || empty($urlPath) || empty($currentUser))
-            return null;
-
-        //VEP data stores are like directories containing file or sub directories. We can create a data store (top level
-        //directory ) with name as user id.
-        $endPoint = $currentUser->id;
-        if(!empty($recordKey))
-            $endPoint .= "/".$recordKey;
-
-        return get_option('libco_server_url').'/'.get_option('libco_url_path').'/'.$endPoint;
-    }
-
-    /**
+       /**
      * Converts omeka record to appropriate request body in json format.
      * @param $record
      * @return string

@@ -2,6 +2,8 @@
 /**
  * User: NaeemM
  */
+require_once LIBCO_DIR."/helpers/ImportRecord.php";
+
 
 class Libco_LibcoController extends Omeka_Controller_AbstractActionController{
 
@@ -27,19 +29,29 @@ class Libco_LibcoController extends Omeka_Controller_AbstractActionController{
             $result = $libcoService->search($searchQuery, $sources, $this->getCurrentPage());
             if(!empty($result)){
                 // 'api/advancedsearch'
-                if(empty($result['responces'])){
+                if(empty($result['responses'])){
                     $this->_helper->flashMessenger('Search result not returned from the server.',  'error');
                     return;
                 }
-                $result = $result['responces'];
+                $result = $result['responses'];
                 $result = $libcoService->normalizeResult($result, $searchQuery);
 
-                if ($result['totalResults']) {
+/*                if ($result['totalResults']) {
                     Zend_Registry::set('pagination', array(
                         'page' => $this->getCurrentPage(),
                         'per_page' => 100,
                         'total_results' => $result['totalResults']
+                    ));}*/
+
+                //libis_temp_start
+                if ($result['highestTotalRecords']) {
+                    Zend_Registry::set('pagination', array(
+                        'page' => $this->getCurrentPage(),
+                        'per_page' => 100,
+                        'total_results' => $result['highestTotalRecords']
                     ));}
+                //libis_temp_end
+
                 $this->view->assign($result);
             }
         }
@@ -58,5 +70,5 @@ class Libco_LibcoController extends Omeka_Controller_AbstractActionController{
 
         return $currentPage;
     }
-    
+
 }

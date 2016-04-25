@@ -43,7 +43,6 @@ class LibcoService {
 
 
     public function search($qParameters, $sources, $page){
-
         //$filters = array(array('filterID' => 'year', 'values' => array('1966','1966')));
         $filters = array();
         $reqBody = array(
@@ -64,6 +63,8 @@ class LibcoService {
         $numberofRecords = 0;
         $sourceResult = array();
 
+        $highestTotal = 0;  //libis_temp
+
         if(array_key_exists('error', $result) && strlen($result['error']) > 0)
         {
             $errorMessage = $result['error'];
@@ -72,15 +73,35 @@ class LibcoService {
         {
             foreach($result as $searchItem){
                 $sourceResult[$searchItem['source']] = $searchItem['items'];
-                $numberofRecords += sizeof($searchItem['items']);
+                //$numberofRecords += sizeof($searchItem['items']);
+                //libis_tempt_start
+                $numberofRecords += $searchItem['totalCount'];
+                if($searchItem['totalCount'] > $highestTotal)
+                    $highestTotal = $searchItem['totalCount'];
+                //libis_tempt_end
+
             }
             arsort($sourceResult);
         }
+
+        //STATUS:
+        /*
+         * paging is working fine now but there are few issues from espace api side:
+         * searches on Europeana source returns different totalCount which makes paging results inconsistent for this source.
+         * Search on Rijksmuseum return different totalCount and number of items.
+         *
+         * Paging is calculated by summing up all totalCounts (which should remain consistent for all pages) and dividing
+         * it by page size (which is 100 in this example. For instance, if Europeana, DigitalNZ, Mint, Rijksmuseum have
+         * 306, 1145454, 45000 and 789546 totalCount subsequently, then, page size will be calculated based on the maximum totalCount
+         * value which is 1145454 (of DigitalNZ). That is 1145454/100 or 11454,54, giving 11455 pages of size 100.
+         * */
         $result = array(
             'query' => $qParameters,
             'records' => $sourceResult,
             'totalResults' => $numberofRecords,
             'error' => $errorMessage,
+            'highestTotalRecords' => $highestTotal //libis_tempt
+            //'usercollections' => $this->getCollectionList(current_user()->id)
         );
         return $result;
     }
@@ -175,7 +196,6 @@ class LibcoService {
 
         return $requestBody;
     }
-
 
     /**
      * Prepare and throw exception.

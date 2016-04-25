@@ -47,7 +47,7 @@ endif;
 
         $response = $importer->importRecords($_POST['eurecords']);
         if(!empty($importer->messages) && is_array($importer->messages)){
-            foreach($importer->messages as $message){
+                foreach($importer->messages as $message){
                 echo $message."<br>";
             }
             unset($importer->messages);
@@ -63,10 +63,14 @@ endif;
     <?php echo pagination_links();?>
     <?php
         // fetch a list of current user collections
+    $currentUser = current_user();
+    $usercollections = array();
+    if(isset($currentUser)){
         $lcService = new LibcoService();
         $usercollections = $lcService->getCollectionList(current_user()->id);
-    ?>
+    }
 
+    ?>
     <table id="search-results">
         <form method="post" class="ajax" id="main">
             <thead>
@@ -85,12 +89,14 @@ endif;
                                 <input type="text" name="txtncollectionname" disabled>
                             </td>
                         </tr>
+                        <?php if(!empty($usercollections)): ?>
                         <tr>
                             <td style="align-content:center">
                                 <label></label><input type="checkbox" name="chbexistingcollection"> <?php echo __("Add to Existing Collection"); ?> </label>
                             </td>
                             <td> <?php echo $this->formSelect('existingcollections', 'Existing Collections', array('class' => 'existing-element-drop-down', 'disabled' => 1),$usercollections, array()); ?> </td>
                         </tr>
+                        <?php endif; ?>
                     </table>
                 </td>
             </tr>
@@ -109,16 +115,28 @@ endif;
             <tbody>
 
             <?php
+            $importer = new ImportRecord();
             foreach ($records as $source => $items):
             ?>
-                <tr><td style="column-span: 3"> <?php echo $source."(".sizeof($items).")"; ?> </td></tr>
+                <tr><td style="column-span: 3"> <?php echo $source."(".sizeof($items['culturalCHO']).")"; ?> </td></tr>
                 <?php
-                foreach($items as $data){
-                    $title = $data['title'];
-                    $weblink = $data['url'];
-                    $url = $weblink['fromSourceAPI'];
-                    ?>
+                foreach($items['culturalCHO'] as $data){
 
+                    $title = current($data['descriptiveData']['label']['default']);
+                    if(empty($title))
+                        continue;
+
+                    $provenance = end($data['provenance']);
+                    if(array_key_exists('uri', $provenance))
+                        $url = $provenance['uri'];
+
+                    $thumbnail = $data['media'][0]['Thumbnail']['url'];
+
+                    $data['search_source'] = $source;
+                    ?>
+                    <?php
+                    if (!empty($thumbnail) && $thumbnail != "null"):
+                        ?>
                     <tr>
                         <td><?php
                             $record_str = base64_encode(serialize($data));
@@ -127,18 +145,25 @@ endif;
                         </td>
                         <td>
                             <div id="imag-div">
-                            <?php
-                                $image = current($data['thumb']);
-                                if (!empty($image) && $image != "null"): ?>
-                                    <img src="<?php echo current($data['thumb']); ?>" height="90" width="90" alt="" onerror="this.style.display='none';">
-                            <?php endif ?>
+                                <?php
+                                if (!empty($thumbnail) && $thumbnail != "null"):
+                                    ?>
+                                    <img src="<?php echo $thumbnail; ?>" height="90" width="90" alt="" onerror="this.style.display='none';">
+                                <?php endif ?>
                             </div>
                         </td>
+
                         <td style="vertical-align: middle;">
-                            <?php echo "<a target = '_blank' href='$url'>$title</a><br>"; ?>
+                            <?php
+                                //link to source record will be provided if given in the search result
+                                if(!empty($url))
+                                    echo "<a target = '_blank' href='$url'>$title</a><br>";
+                                else
+                                    echo "$title<br>";
+                            ?>
                         </td>
                     </tr>
-
+                    <?php endif ?>
                 <?php
                 }
                 echo "<br>";

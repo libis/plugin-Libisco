@@ -120,10 +120,6 @@ class ImportRecord {
                 }
 
 
-/*                $this->db->insert("Element_text",
-                    array('record_id' => $collection, 'record_type' => 'Collection',
-                        'element_id' => $elementId, 'text' => $this->collectionName, 'html' => true));*/
-
                 $this->collectionAdded = true;
                 if($this->addToExistingCollection)
                     $this->messages[] = __("Items added to the existing collection  '%s '.", $this->collectionName);
@@ -201,12 +197,6 @@ class ImportRecord {
                 $this->db->insert("Element_text", $insertOptions);
 
             }
-
-/*            $insertOptions = array(
-                'record_id' => $recordId, 'record_type' => $recordType,
-                'element_id' => $element['elementId'], 'text' => $element['value'], 'html' => 0
-            );
-            $this->db->insert("Element_text", $insertOptions);*/
         }
 
     }
@@ -231,35 +221,13 @@ class ImportRecord {
         }
     }
 
-//    function parseResult($recordToAdd){
-//        $elements = array();
-//        $isValidItem = false;
-//
-//        $resultKeyValues = $this->getArrayKeyValues($recordToAdd);
-//        foreach($resultKeyValues as $items){
-//            foreach($items as $key => $value){
-//                if(strtolower($key) === "title") //Items should always have a title, otherwise it is not a valid record.
-//                    $isValidItem = true;
-//
-//                $element = $this->getElement($key);
-//                if(!empty($element) && !empty($value) && $value != "null"){
-//                    $element['value'] = $value;
-//                    $elements [] = $element;
-//                }
-//            }
-//        }
-//
-//        /* Return null if 'Title' is not among the elements to be added. */
-//        if($isValidItem)
-//            return $elements;
-//    }
-
     function parseResult($recordToAdd){
         $fields = array();
         $responseRecord = $this->setResponseRecord($recordToAdd);
 
         /* Title (Label) does not exist therefore it is an invalid record, no need for further processing, return. */
-        if(empty($responseRecord->isValidRecord()))
+        $validRecord = $responseRecord->isValidRecord();
+        if(empty($validRecord))
             return;
 
         $recordFields = $responseRecord->getAllFields();
@@ -273,9 +241,6 @@ class ImportRecord {
                 $elementId = $this->getElementId($elementName, "Dublin Core");
                 if(!empty($elementId)){
                     $fields = array_merge($fields, $this->setFieldValues($elementId, $elementName, $fieldValue, $field));
-/*                    $fields[] = array('elementId' => $elementId, 'elementName' => $elementName, 'value' => $fieldValue,
-                        'mappedFrom' => $field
-                    );*/
                 }
             }
             else
@@ -384,10 +349,6 @@ class ImportRecord {
                 if(empty($elementName))
                     $elementName="";
                 $fields = array_merge($fields, $this->setFieldValues($elementId, $elementName, $fieldValue, $field));
-/*                $fields[] = array('elementId' => $elementId, 'elementName' => $elementName, 'value' => $fieldValue,
-                    'mappedFrom' => $field
-                );*/
-
             }
 
             unset($elementId);
@@ -396,32 +357,6 @@ class ImportRecord {
 
         if(sizeof($fields) > 0)
             return $fields;
-
-
-
-
-
-
-//        $elements = array();
-//        $isValidItem = false;
-//
-//        $resultKeyValues = $this->getArrayKeyValues($recordToAdd);
-//        foreach($resultKeyValues as $items){
-//            foreach($items as $key => $value){
-//                if(strtolower($key) === "title") //Items should always have a title, otherwise it is not a valid record.
-//                    $isValidItem = true;
-//
-//                $element = $this->getElement($key);
-//                if(!empty($element) && !empty($value) && $value != "null"){
-//                    $element['value'] = $value;
-//                    $elements [] = $element;
-//                }
-//            }
-//        }
-//
-//        /* Return null if 'Title' is not among the elements to be added. */
-//        if($isValidItem)
-//            return $elements;
     }
 
     function setFieldValues($elementId, $elementName, $fieldValue, $mappedFromField){
@@ -448,7 +383,6 @@ class ImportRecord {
 
     function getElement($elementName)
     {
-        //$element = array();
         $dcType = "Dublin Core";
 
         switch ($elementName) {
@@ -499,19 +433,6 @@ class ImportRecord {
                 $name = 'Source';
                 break;
 
-/*
-            case 'urloriginal':
-                $elementId = $this->getElementId('References', $dcType);
-                break;
-
-            case 'urlfromSourceAPI':
-                $elementId = $this->getElementId('References', $dcType);
-                break;
-
-            case 'fullresolution':
-                $elementId = $this->getElementId('References', $dcType);
-                break;*/
-
             case 'rights':
                 $elementId = $this->getElementId('Rights', $dcType);
                 $name = 'Rights';
@@ -535,8 +456,6 @@ class ImportRecord {
             if(array_key_exists('id',$element))
                 return $element->id;
         }
-//        if(array_key_exists('id',$element))
-//            return $element->id;
     }
 
     function getArrayKeyValues($array){
@@ -551,19 +470,5 @@ class ImportRecord {
         }
         return $keys;
     }
-
-    /*function getArrayKeyValues($array){
-        $iterator = new RecursiveIteratorIterator(new RecursiveArrayIterator($array));
-        $keys = array();
-        foreach ($iterator as $key => $value) {
-            for ($i = $iterator->getDepth() - 1; $i >= 0; $i--) {
-                $key = $iterator->getSubIterator($i)->key();
-            }
-            if(!empty($value))
-                $keys[] = array($key => $value);
-        }
-        return $keys;
-    }*/
-
 
 }

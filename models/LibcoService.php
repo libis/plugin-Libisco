@@ -171,7 +171,7 @@ class LibcoService {
         $httpClient->setConfig($requestConfig);
         $httpClient->setHeaders('Content-Type', 'application/json');
         $httpClient->setRawData(json_encode($requestBody));
-        $response = $httpClient->request($request['type']);
+		$response = $httpClient->request($request['type']);
 
         if($response->getStatus() === 200)
             return $response->getBody();

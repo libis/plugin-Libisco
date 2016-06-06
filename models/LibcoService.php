@@ -57,7 +57,6 @@ class LibcoService {
             "source" => $sources,
             "filters" => $filters
         );
-        var_dump($reqBody);
         $response = $this->makeRequest("general", $reqBody);
         $response = json_decode($response, true);
 

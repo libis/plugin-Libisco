@@ -29,6 +29,11 @@ class LibcoService {
                 $reqType = "POST";
                 break;
 
+            case 'searchsources':
+                $endPoint = "api/searchsources";
+                $reqType = "GET";
+                break;
+
             case 'collection':
                 break;
 
@@ -48,10 +53,11 @@ class LibcoService {
         $reqBody = array(
             "searchTerm" => $qParameters,
             "page" => $page,
-            "pageSize" => 100,
+            "pageSize" => 5,
             "source" => $sources,
             "filters" => $filters
         );
+        var_dump($reqBody);
         $response = $this->makeRequest("general", $reqBody);
         $response = json_decode($response, true);
 
@@ -171,7 +177,7 @@ class LibcoService {
         $httpClient->setConfig($requestConfig);
         $httpClient->setHeaders('Content-Type', 'application/json');
         $httpClient->setRawData(json_encode($requestBody));
-		$response = $httpClient->request($request['type']);
+        $response = $httpClient->request($request['type']);
 
         if($response->getStatus() === 200)
             return $response->getBody();
@@ -195,6 +201,31 @@ class LibcoService {
         );
 
         return $requestBody;
+    }
+
+    public function getSearchSources(){
+        $request = $this->prepareUrl("searchsources");
+        if(empty($request['url']) || empty($request['type'])){
+            return json_encode(array('error' => 'Error in preparing http request.'));
+        }
+
+        $requestConfig = array(
+            'adapter'    => 'Zend_Http_Client_Adapter_Proxy',
+            'proxy_host' => get_option('libco_server_proxy'),
+            'timeout' => 900
+        );
+
+        $restClient = new Zend_Rest_Client();
+        $httpClient = $restClient->getHttpClient();
+        $httpClient->resetParameters();
+        $httpClient->setUri($request['url']);
+        $httpClient->setConfig($requestConfig);
+        $httpClient->setHeaders('Content-Type', 'application/json');
+        $response = $httpClient->request($request['type']);
+        if($response->getStatus() === 200){
+            $resp = json_decode($response->getBody());
+            return $resp;
+        }
     }
 
     /**

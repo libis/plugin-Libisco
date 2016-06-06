@@ -84,6 +84,13 @@ class ImportRecord {
         $itemTypeId = $itemTypeTable->findBySql('name = ?', array($typeName), true);
         if(!empty($itemTypeId->id))
             return $itemTypeId->id;
+        else{   //if item type does not exist create it.
+            $itemType = new ItemType;
+            $itemType->name = $typeName;
+            if($itemType->save() && !empty($itemType->id)){
+                return $itemType->id;
+            }
+        }
     }
 
     function addCollection($isPublicCollection, $isFeaturedCollection){
@@ -190,9 +197,16 @@ class ImportRecord {
             }
 
             if(!empty($element['elementId']) && !empty($element['value'])){
+                /* For some of search sources (british library, internet achieves) value of creator field is returned
+				in array with extra depth as compared to other search sources. Therefore if value is an array, 
+				we pickthe first value.
+				*/
+                if(is_array($element['value']))
+                    $element['value'] = current($element['value']);
+
                 $insertOptions = array(
                     'record_id' => $recordId, 'record_type' => $recordType,
-                    'element_id' => $element['elementId'], 'text' => $element['value'], 'html' => 0
+                    'element_id' => $element['elementId'], 'text' => $element['value'], 'html' => 1
                 );
                 $this->db->insert("Element_text", $insertOptions);
 
@@ -208,7 +222,17 @@ class ImportRecord {
         if(!empty($url)){
             $context_array = array('http'=>array('proxy'=>get_option('libco_server_proxy'),'request_fulluri'=>true));
             $context = stream_context_create($context_array);
-            $imageData = file_get_contents($url,false,$context);
+
+            if (filter_var($url, FILTER_VALIDATE_URL) === FALSE) //if url is invalid
+                return;
+            $arrayHeaders = get_headers($url);
+            if(!is_array($arrayHeaders) || !strpos($arrayHeaders[0],"200")) //if url does not exist
+                return;
+
+            $imageData = @file_get_contents($url,false,$context);
+            if($imageData == false) //image not available
+                return;
+
             file_put_contents($image_path,$imageData);
 
             // Link image to item

@@ -1,7 +1,6 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 <?php
-require_once LIBCO_DIR."/helpers/ImportRecord.php"
-
+require_once LIBCO_DIR."/helpers/ImportRecord.php";
 ?>
 <?php
 if(empty($totalResults)):
@@ -130,7 +129,8 @@ endif;
                     if(array_key_exists('uri', $provenance))
                         $url = $provenance['uri'];
 
-                    $thumbnail = $data['media'][0]['Thumbnail']['url'];
+                    if(!empty($data['media'][0]['Thumbnail']['url']))
+                        $thumbnail = $data['media'][0]['Thumbnail']['url'];
 
                     $data['search_source'] = $source;
                     ?>

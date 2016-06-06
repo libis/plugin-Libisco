@@ -104,6 +104,8 @@ class ResponseRecord
      */
     public function isValidRecord(){
         $descriptiveFields = $this->getDescriptiveFields();
+        /*if(array_key_exists('label', $descriptiveFields) && is_array($descriptiveFields['label']) && !empty(current($descriptiveFields['label'])))
+            return true; */
         $desField = current($descriptiveFields['label']);
         if(array_key_exists('label', $descriptiveFields) && is_array($descriptiveFields['label']) && !empty($desField))
             return true;

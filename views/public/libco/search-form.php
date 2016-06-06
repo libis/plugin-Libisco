@@ -1,4 +1,5 @@
 <?php
+require_once LIBCO_DIR."/models/LibcoService.php";
 $formAttributes = array(
     'action' => url('libco/libco/search'),
     'method' => 'GET',
@@ -12,12 +13,15 @@ $formAttributes = array(
 <div><?php echo flash(); ?></div>
 
 <div id="libco-search-box">
-    <div class="field"> 
+    <div class="field">
         <?php echo $this->formText('q', $query, array('title' => __('Search keywords'), 'size' => 40, 'placeholder' => 'Search...')); ?>
         <?php echo $this->formButton('', __('Search'), array('type' => 'submit')); ?>
     </div> 
 
-    <?php $searchSources = array("Europeana","DigitalNZ","Mint","Rijksmuseum"); ?>
+    <?php
+    $libcoService = new LibcoService();
+    $searchSources = $libcoService->getSearchSources();
+    ?>
     <div class="field">
         <label><?php //echo __("Search By"); ?></label>
         <div class="inputs">
@@ -30,12 +34,17 @@ $formAttributes = array(
         <div class="inputs">
             <ul>
             <?php
-            foreach($searchSources as $sourceName){
-                echo "<li>";           
-                echo $view->formCheckbox('searchsource_'.$sourceName, null, array('checked'=>'checked'));
-                echo $sourceName;
-                echo "</li>";
-            }       
+            if(!empty($searchSources) && is_array($searchSources)){
+                foreach($searchSources as $sourceName){
+                    echo "<li>";
+                    echo $view->formCheckbox('searchsource_'.$sourceName, null, array('checked'=>'checked'));
+                    echo $sourceName;
+                    echo "</li>";
+                }
+            }
+            else{
+                echo 'Error in retrieving search sources from Europeana Space.';
+            }
             ?>
              </ul>
         </div>

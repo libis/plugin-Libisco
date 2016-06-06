@@ -35,7 +35,10 @@ $formAttributes = array(
             <ul>
             <?php
             if(!empty($searchSources) && is_array($searchSources)){
+				$excludeSource = array("NLA");
                 foreach($searchSources as $sourceName){
+                    if(in_array($sourceName, $excludeSource))
+                        continue;					
                     echo "<li>";
                     echo $view->formCheckbox('searchsource_'.$sourceName, null, array('checked'=>'checked'));
                     echo $sourceName;

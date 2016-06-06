@@ -225,8 +225,8 @@ class ImportRecord {
 
             if (filter_var($url, FILTER_VALIDATE_URL) === FALSE) //if url is invalid
                 return;
-            $arrayHeaders = get_headers($url);
-            if(!is_array($arrayHeaders) || !strpos($arrayHeaders[0],"200")) //if url does not exist
+				
+            if(!$this->urlExists($url))
                 return;
 
             $imageData = @file_get_contents($url,false,$context);
@@ -245,6 +245,29 @@ class ImportRecord {
         }
     }
 
+    function urlExists($url){
+        $requestConfig = array(
+            'adapter'    => 'Zend_Http_Client_Adapter_Proxy',
+            'proxy_host' => get_option('libco_server_proxy'),
+            'timeout' => 900
+        );
+
+        $restClient = new Zend_Rest_Client();
+        $httpClient = $restClient->getHttpClient();
+        $httpClient->resetParameters();
+        $httpClient->setUri($url);
+        $httpClient->setConfig($requestConfig);
+        try {
+            $response = $httpClient->request('GET');
+            if($response->getStatus() === 200)
+                return true;
+            else
+                return false;
+        } catch (Exception $e) {
+            return false;
+        }
+    }	
+	
     function parseResult($recordToAdd){
         $fields = array();
         $responseRecord = $this->setResponseRecord($recordToAdd);
